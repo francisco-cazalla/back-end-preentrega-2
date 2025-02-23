@@ -1,13 +1,58 @@
-[
-  {
-    "id": 1,
-    "title": "asd",
-    "description": "asd",
-    "price": 1,
-    "code": "N/A",
-    "stock": 0,
-    "category": "General",
-    "status": true,
-    "thumbnails": []
-  }
+
+  [
+    {
+      "id": 1,
+      "title": "Guitarra Eléctrica Fender Stratocaster",
+      "description": "Guitarra icónica con un sonido versátil y un diseño clásico.",
+      "price": 1200,
+      "code": "STRAT001",
+      "stock": 5,
+      "category": "Instrumentos",
+      "status": true,
+      "thumbnails": ["https://example.com/guitarra-stratocaster.jpg"]
+    },
+    {
+      "id": 2,
+      "title": "Bajo Fender Jazz Bass",
+      "description": "Bajo eléctrico con un tono profundo y un diseño elegante.",
+      "price": 1500,
+      "code": "JAZZBASS002",
+      "stock": 3,
+      "category": "Instrumentos",
+      "status": true,
+      "thumbnails": ["https://example.com/bajo-jazzbass.jpg"]
+    },
+    {
+      "id": 3,
+      "title": "Amplificador Marshall 100W",
+      "description": "Amplificador potente para guitarra eléctrica con distorsión clásica.",
+      "price": 800,
+      "code": "AMP100MARSH",
+      "stock": 2,
+      "category": "Accesorios",
+      "status": true,
+      "thumbnails": ["https://example.com/amplificador-marshall.jpg"]
+    },
+    {
+      "id": 4,
+      "title": "Teclado Yamaha 88 Teclas",
+      "description": "Teclado digital con un sonido realista y múltiples funciones.",
+      "price": 1100,
+      "code": "YAMKEY88",
+      "stock": 4,
+      "category": "Instrumentos",
+      "status": true,
+      "thumbnails": ["https://example.com/teclado-yamaha.jpg"]
+    },
+    {
+      "id": 5,
+      "title": "Batería Acústica Pearl",
+      "description": "Set completo de batería acústica con excelente sonido y calidad.",
+      "price": 2200,
+      "code": "PEARLDRUMS",
+      "stock": 1,
+      "category": "Instrumentos",
+      "status": true,
+      "thumbnails": ["https://example.com/bateria-pearl.jpg"]
+    }
 ]
