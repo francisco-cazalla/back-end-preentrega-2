@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "title": "asd",
+    "description": "asd",
+    "price": 1,
+    "code": "N/A",
+    "stock": 0,
+    "category": "General",
+    "status": true,
+    "thumbnails": []
+  }
+]

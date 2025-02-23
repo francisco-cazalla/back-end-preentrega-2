@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>{{title}}</h1>
+    
+    {{#if cart}}
+      {{#if cartProducts.length}}
+        <h2>Productos en el Carrito</h2>
+        <ul>
+          {{#each cartProducts}}
+            <li data-id="{{this.id}}">
+              <h3>{{this.title}}</h3>
+              <p>{{this.description}}</p>
+              <p><strong>Precio:</strong> ${{this.price}}</p>
+              <p><strong>Cantidad:</strong> {{this.quantity}}</p>
+              <button class="removeFromCart" data-id="{{this.id}}">Eliminar</button>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <p>El carrito está vacío.</p>
+      {{/if}}
+    {{else}}
+      <p>No se encontró un carrito por defecto.</p>
+    {{/if}}
+    
+    <a href="/">Volver a la lista de productos</a>
+  </div>
+  
+  <script>
+    
+    document.querySelectorAll('.removeFromCart').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const productId = this.getAttribute('data-id');
+        try {
+          const response = await fetch(`/api/carts/1/product/${productId}`, {
+            method: 'DELETE'
+          });
+          const result = await response.json();
+          alert(result.message);
+          location.reload(); 
+        } catch (error) {
+          console.error(error);
+          alert('Error eliminando el producto del carrito.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

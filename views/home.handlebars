@@ -1,0 +1,18 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Home - Lista de Productos</title>
+  <link rel="stylesheet" href="/public/css/style.css">
+</head>
+<body>
+  <h1>Lista de Productos</h1>
+  <ul>
+    {{#each products}}
+      <li>{{this.id}} - {{this.title}}: {{this.description}} (Precio: ${{this.price}})</li>
+    {{/each}}
+  </ul>
+  <a href="/realtimeproducts">Ver productos en tiempo real</a>
+</body>
+</html>
