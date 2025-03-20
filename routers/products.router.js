@@ -1,91 +1,60 @@
-
+// routers/products.router.js
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const { readJSON, writeJSON } = require('../utils/fileManager');
-
-const productsFile = path.join(__dirname, '../productos.json');
+const Product = require('../models/Product');
 
 
 router.get('/', async (req, res) => {
   try {
-    const products = await readJSON(productsFile);
-    res.json(products);
+    let { limit, page, sort, query } = req.query;
+    limit = parseInt(limit) || 10;
+    page = parseInt(page) || 1;
+    
+    
+    let filter = {};
+    if (query) {
+      
+      const [field, value] = query.split(':');
+      if (field === 'category') {
+        filter.category = value;
+      } else if (field === 'available' && value === 'true') {
+        filter.stock = { $gt: 0 };
+      }
+    }
+    
+    
+    let sortOption = {};
+    if (sort) {
+      sortOption.price = sort.toLowerCase() === 'asc' ? 1 : -1;
+    }
+    
+    const totalProducts = await Product.countDocuments(filter);
+    const totalPages = Math.ceil(totalProducts / limit);
+    const products = await Product.find(filter)
+      .sort(sortOption)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    
+    
+    const baseUrl = `/api/products?limit=${limit}`;
+    const prevLink = page > 1 ? `${baseUrl}&page=${page - 1}` : null;
+    const nextLink = page < totalPages ? `${baseUrl}&page=${page + 1}` : null;
+    
+    res.json({
+      status: 'success',
+      payload: products,
+      totalPages,
+      prevPage: page > 1 ? page - 1 : null,
+      nextPage: page < totalPages ? page + 1 : null,
+      page,
+      hasPrevPage: page > 1,
+      hasNextPage: page < totalPages,
+      prevLink,
+      nextLink
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-router.get('/:pid', async (req, res) => {
-  try {
-    const products = await readJSON(productsFile);
-    const pid = parseInt(req.params.pid);
-    const product = products.find(p => p.id === pid);
-    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-router.post('/', async (req, res) => {
-  const { title, description, code, price, stock, category, thumbnails } = req.body;
-  if (!title || !description || !code || price === undefined || stock === undefined || !category) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
-  }
-  try {
-    const products = await readJSON(productsFile);
-    const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-    const newProduct = {
-      id: newId,
-      title,
-      description,
-      code,
-      price,
-      status: true,
-      stock,
-      category,
-      thumbnails: thumbnails || []
-    };
-    products.push(newProduct);
-    await writeJSON(productsFile, products);
-    res.status(201).json(newProduct);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-router.put('/:pid', async (req, res) => {
-  const pid = parseInt(req.params.pid);
-  const updateData = req.body;
-  delete updateData.id; 
-  try {
-    const products = await readJSON(productsFile);
-    const index = products.findIndex(p => p.id === pid);
-    if (index === -1) return res.status(404).json({ error: 'Producto no encontrado' });
-    products[index] = { ...products[index], ...updateData };
-    await writeJSON(productsFile, products);
-    res.json(products[index]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-router.delete('/:pid', async (req, res) => {
-  const pid = parseInt(req.params.pid);
-  try {
-    const products = await readJSON(productsFile);
-    const index = products.findIndex(p => p.id === pid);
-    if (index === -1) return res.status(404).json({ error: 'Producto no encontrado' });
-    const deleted = products.splice(index, 1);
-    await writeJSON(productsFile, products);
-    res.json({ message: 'Producto eliminado', product: deleted[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ status: 'error', error: err.message });
   }
 });
 

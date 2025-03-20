@@ -1,26 +1,46 @@
 
+
+require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const path = require('path');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const exphbs = require('express-handlebars');
-const { readJSON, writeJSON } = require('./utils/fileManager');
+const { engine } = require('express-handlebars');
 
+
+const Product = require('./models/Product');
+const Cart = require('./models/Cart');
+
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/miProyectoFinal';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ Conectado a MongoDB'))
+  .catch(err => console.error('❌ Error de conexión:', err));
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 
-app.engine('handlebars', exphbs.engine());
+app.engine('handlebars', engine({
+  defaultLayout: 'main',
+  layoutsDir: path.join(__dirname, 'views', 'layouts'),
+  runtimeOptions: {
+    allowProtoPropertiesByDefault: true,
+    allowProtoMethodsByDefault: true
+  },
+  helpers: {
+    multiply: (a, b) => a * b
+  }
+}));
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 
@@ -31,91 +51,98 @@ app.use('/api/products', productsRouter);
 app.use('/api/carts', cartsRouter);
 
 
+app.get('/', (req, res) => res.redirect('/products'));
 
 
-app.get('/', async (req, res) => {
-  const products = await readJSON(path.join(__dirname, 'productos.json'));
-  res.render('home', { products });
+app.get('/products', async (req, res) => {
+  try {
+    let { limit, page, sort, query } = req.query;
+    limit = parseInt(limit) || 10;
+    page = parseInt(page) || 1;
+
+    let filter = {};
+    if (query) {
+      const [field, value] = query.split(':');
+      if (field === 'category') {
+        filter.category = value;
+      } else if (field === 'available' && value === 'true') {
+        filter.stock = { $gt: 0 };
+      }
+    }
+
+    let sortOption = {};
+    if (sort) {
+      sortOption.price = sort.toLowerCase() === 'asc' ? 1 : -1;
+    }
+
+    const totalProducts = await Product.countDocuments(filter);
+    const totalPages = Math.ceil(totalProducts / limit);
+    const products = await Product.find(filter)
+      .sort(sortOption)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const hasPrevPage = page > 1;
+    const hasNextPage = page < totalPages;
+    const prevLink = hasPrevPage ? `/products?limit=${limit}&page=${page - 1}&sort=${sort || ''}&query=${query || ''}` : null;
+    const nextLink = hasNextPage ? `/products?limit=${limit}&page=${page + 1}&sort=${sort || ''}&query=${query || ''}` : null;
+
+   
+    res.render('home', {
+      products,
+      totalPages,
+      page,
+      hasPrevPage,
+      hasNextPage,
+      prevLink,
+      nextLink,
+      title: 'Lista de Productos'
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
 });
 
 
-app.get('/realtimeproducts', async (req, res) => {
-  const products = await readJSON(path.join(__dirname, 'productos.json'));
-  res.render('realTimeProducts', { products });
+app.get('/products/:pid', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.pid).lean();
+    if (!product) return res.status(404).send('Producto no encontrado');
+    res.render('productDetail', { product, title: product.title });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
 });
+
 
 app.get('/cart', async (req, res) => {
-  const carts = await readJSON(path.join(__dirname, 'carrito.json'));
-  const cart = carts.find(c => c.id === 1) || null;
-
-  let cartProducts = [];
-  if (cart && cart.products && cart.products.length > 0) {
-    const products = await readJSON(path.join(__dirname, 'productos.json'));
-    cartProducts = cart.products.map(item => {
-      const prodDetail = products.find(p => p.id === item.product);
-      return {
-        id: item.product,
-        quantity: item.quantity,
-        title: prodDetail ? prodDetail.title : 'Producto no encontrado',
-        description: prodDetail ? prodDetail.description : '',
-        price: prodDetail ? prodDetail.price : 0
-      };
-    });
-  }
-  res.render('cart', { cart, cartProducts, title: "Tu Carrito de Compras" });
+  let cart = await Cart.findOne().populate('products.product').lean();
+  if (!cart) cart = { products: [] };
+  res.render('cart', { cart, title: 'Tu Carrito de Compras' });
 });
-
-
 
 
 io.on('connection', (socket) => {
-  console.log('Nuevo cliente conectado');
+  console.log('🔵 Cliente conectado');
 
-  
-  const productsFile = path.join(__dirname, 'productos.json');
-  readJSON(productsFile).then(products => {
-    socket.emit('updateProducts', products);
-  });
+  Product.find().lean().then(products => socket.emit('updateProducts', products));
 
-  
   socket.on('addProduct', async (data) => {
-    const productsFile = path.join(__dirname, 'productos.json');
-    const products = await readJSON(productsFile);
-    const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-    const newProduct = {
-      id: newId,
-      title: data.title,
-      description: data.description,
-      price: Number(data.price),
-      code: data.code || 'N/A',
-      stock: data.stock || 0,
-      category: data.category || 'General',
-      status: true,
-      thumbnails: data.thumbnails || []
-    };
-    products.push(newProduct);
-    await writeJSON(productsFile, products);
-    io.emit('updateProducts', products);
-  });
-
-  
-  socket.on('deleteProduct', async (id) => {
-    id = Number(id);
-    const productsFile = path.join(__dirname, 'productos.json');
-    let products = await readJSON(productsFile);
-    const index = products.findIndex(p => p.id === id);
-    if (index !== -1) {
-      products.splice(index, 1);
-      await writeJSON(productsFile, products);
+    try {
+      const newProduct = new Product(data);
+      await newProduct.save();
+      const products = await Product.find().lean();
       io.emit('updateProducts', products);
+    } catch (err) {
+      console.error('❌ Error al agregar producto:', err);
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado');
-  });
+  socket.on('disconnect', () => console.log('🔴 Cliente desconectado'));
 });
 
+
 httpServer.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });

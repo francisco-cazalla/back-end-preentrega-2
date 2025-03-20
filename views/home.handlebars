@@ -1,18 +1,73 @@
+<!-- views/home.handlebars -->
+<h1>{{title}}</h1>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Home - Lista de Productos</title>
-  <link rel="stylesheet" href="/public/css/style.css">
-</head>
-<body>
-  <h1>Lista de Productos</h1>
-  <ul>
+<!-- Formulario de Filtros -->
+<form method="GET" action="/products" class="filter-form">
+  <label for="category">Categoría:</label>
+  <select name="query" id="category">
+    <option value="">-- Todas las categorías --</option>
+    <option value="category:Electrónica">Electrónica</option>
+    <option value="category:Accesorios">Accesorios</option>
+    <option value="category:Oficina">Oficina</option>
+    <option value="category:Fotografía">Fotografía</option>
+  </select>
+  
+  <label for="sort">Ordenar por precio:</label>
+  <select name="sort" id="sort">
+    <option value="">-- Sin orden --</option>
+    <option value="asc">Ascendente</option>
+    <option value="desc">Descendente</option>
+  </select>
+  
+  <label for="limit">Mostrar:</label>
+  <input type="number" name="limit" id="limit" value="10" min="1">
+  
+  <label for="page">Página:</label>
+  <input type="number" name="page" id="page" value="1" min="1">
+  
+  <button type="submit">Aplicar Filtros</button>
+</form>
+
+
+{{#if products.length}}
+  <div class="products-container">
     {{#each products}}
-      <li>{{this.id}} - {{this.title}}: {{this.description}} (Precio: ${{this.price}})</li>
+      <div class="product-card">
+        {{#if this.thumbnails.[0]}}
+          <img src="{{this.thumbnails.[0]}}" alt="{{this.title}}" class="product-img">
+        {{/if}}
+        <h2>{{this.title}}</h2>
+        <p>{{this.description}}</p>
+        <p><strong>Precio:</strong> ${{this.price}}</p>
+        <p><strong>Stock:</strong> {{this.stock}}</p>
+        <a href="/products/{{this._id}}" class="btn-detail">Ver Detalle</a>
+        <button onclick="addToCart('{{this._id}}')" class="btn-add">Agregar al Carrito</button>
+      </div>
     {{/each}}
-  </ul>
-  <a href="/realtimeproducts">Ver productos en tiempo real</a>
-</body>
-</html>
+  </div>
+  
+  <div class="pagination">
+    {{#if hasPrevPage}}
+      <a href="{{prevLink}}">Anterior</a>
+    {{/if}}
+    <span>Página {{page}} de {{totalPages}}</span>
+    {{#if hasNextPage}}
+      <a href="{{nextLink}}">Siguiente</a>
+    {{/if}}
+  </div>
+{{else}}
+  <p>No hay productos disponibles.</p>
+{{/if}}
+
+<script>
+  function addToCart(productId) {
+    fetch('/api/carts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, quantity: 1 })
+    })
+    .then(res => res.json())
+    .then(data => alert('Producto agregado al carrito'))
+    .catch(err => console.error(err));
+  }
+</script>
